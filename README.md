@@ -50,10 +50,3 @@ The repository includes detailed documentation about:
 - Common LLM tokenization challenges
 - Comparisons with professional tokenizers (e.g., GPT-2)
 
-## Contributing
-
-Feel free to submit issues and enhancement requests!
-
-## License
-
-[MIT License](LICENSE)
