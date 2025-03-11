@@ -10,7 +10,30 @@ class Tokenizer:
         self.vocab = {}  # vocabulary: token -> id mapping
         self.inv_vocab = {}  # inverse vocabulary: id -> token mapping
         self.merges = {}  # merge rules: pair -> token mapping
+        self.special_tokens = {
+            '<SPACE>': ' ',
+            '<NEWLINE>': '\n',
+            '<TAB>': '\t'
+        }
         
+    def _preprocess_text(self, text):
+        """
+        Preprocess text by replacing special characters with special tokens
+        """
+        # Replace special characters with special tokens
+        for token, char in self.special_tokens.items():
+            text = text.replace(char, f' {token} ')
+        return text
+    
+    def _postprocess_text(self, text):
+        """
+        Postprocess text by replacing special tokens with original characters
+        """
+        # Replace special tokens with original characters
+        for token, char in self.special_tokens.items():
+            text = text.replace(token, char)
+        return text
+
     def _get_stats(self, tokens):
         """Count frequencies of adjacent symbol pairs"""
         pairs = defaultdict(int)
@@ -47,20 +70,28 @@ class Tokenizer:
             text (str): Training text
             vocab_size (int): Target vocabulary size
         """
-        # Initialize: split text into words
-        words = text.split()
+        # Preprocess text
+        processed_text = self._preprocess_text(text)
+        
+        # Initialize: split text into words, preserving special tokens
+        words = processed_text.split()
         word_freqs = Counter(words)
         
         # Split each word into characters
         tokens = {}
         for word, freq in word_freqs.items():
-            chars = ' '.join(list(word))
-            tokens[chars] = freq
+            # Don't split special tokens
+            if word in self.special_tokens:
+                tokens[word] = freq
+            else:
+                chars = ' '.join(list(word))
+                tokens[chars] = freq
             
-        # Initialize base vocabulary (single characters)
-        base_vocab = set()
+        # Initialize base vocabulary with special tokens and characters
+        base_vocab = set(self.special_tokens.keys())
         for word in tokens.keys():
-            base_vocab.update(word.split())
+            if word not in self.special_tokens:
+                base_vocab.update(word.split())
         
         # Assign IDs to base vocabulary
         for i, token in enumerate(sorted(base_vocab)):
@@ -100,11 +131,17 @@ class Tokenizer:
         if not self.vocab:
             raise ValueError("Tokenizer needs to be trained first")
             
-        # Initialize: split text into characters
-        words = text.split()
+        # Preprocess text
+        processed_text = self._preprocess_text(text)
+        words = processed_text.split()
         encoded = []
         
         for word in words:
+            # Handle special tokens
+            if word in self.special_tokens:
+                encoded.append(self.vocab[word])
+                continue
+                
             chars = ' '.join(list(word))
             subwords = chars.split()
             
@@ -143,8 +180,10 @@ class Tokenizer:
             
         # Convert IDs back to tokens
         tokens = [self.inv_vocab[id] for id in ids]
-        # Join tokens and remove spaces between characters
+        # Join tokens
         text = ''.join(tokens)
+        # Postprocess to restore special characters
+        text = self._postprocess_text(text)
         return text
 
 
